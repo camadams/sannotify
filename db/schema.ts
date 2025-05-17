@@ -1,8 +1,8 @@
-import { integer, pgTable, text } from "drizzle-orm/pg-core";
+import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-export const resortsTable = pgTable("resorts", {
+export const availabilityTable = pgTable("availability", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  name: text("name").notNull(),
-  sub_unitcode: text("sub_unitcode").notNull(),
-  avaliabilty: text("avaliabilty").notNull(),
+  camp_id: integer("camp_id").notNull(),
+  availability: text("availability").notNull(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
 });

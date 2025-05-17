@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import puppeteer, { Page } from "puppeteer";
 import fs from "fs";
 import { getURL } from "./helpers/url";
 
@@ -15,7 +15,6 @@ export async function scrap() {
       "--no-zygote",
       "--disable-gpu",
     ],
-    timeout: 60000,
   });
 
   console.log("Creating new page...");
@@ -50,58 +49,28 @@ export async function scrap() {
   const url = await getURL();
 
   try {
-    await page.goto(url, {
-      waitUntil: "networkidle2",
-      timeout: 90000,
-    });
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
-    try {
-      await page.waitForResponse(
-        (response) => response.url().includes("getAvailabilityMatch.php"),
-        { timeout: 60000 }
+    await page.waitForResponse((response) =>
+      response.url().includes("getAvailabilityMatch.php")
+    );
+    let listButton = await page.$('a[data-type="list"]');
+
+    await listButton?.click();
+
+    let loadMoreButton = await getLoadMoreButton(page);
+
+    let count = 0;
+    while (loadMoreButton) {
+      await loadMoreButton.click();
+      await page.waitForResponse((response) =>
+        response.url().includes("getAvailabilityMatch.php")
       );
-      let appSecondaryButton = await page.waitForSelector(
-        "app-secondary-button",
-        {
-          timeout: 60000,
-          visible: true,
-        }
-      );
-
-      let count = 0;
-      while (appSecondaryButton) {
-        await appSecondaryButton.click();
-
-        await page.waitForResponse(
-          (response) => response.url().includes("getAvailabilityMatch.php"),
-          { timeout: 60000 }
-        );
-
-        try {
-          appSecondaryButton = await page.waitForSelector(
-            "app-secondary-button",
-            {
-              timeout: 60000,
-              visible: true,
-            }
-          );
-
-          if (appSecondaryButton) {
-            let innerText = await appSecondaryButton.getProperty("innerText");
-            const text = await innerText.jsonValue();
-            if (text === "RETURN TO MAP") {
-              break;
-            }
-          }
-        } catch (error) {
-          console.log("Error or timeout waiting for button:", error.message);
-          break;
-        }
-
-        count++;
+      loadMoreButton = await getLoadMoreButton(page);
+      if (!loadMoreButton) {
+        break;
       }
-    } catch (error) {
-      console.error("Error during page interaction:", error.message);
+      count++;
     }
   } catch (error) {
     console.error("Error loading page:", error.message);
@@ -112,7 +81,12 @@ export async function scrap() {
   }
   return ans;
 }
-
+async function getLoadMoreButton(page: Page) {
+  let appSecondaryButton = await page.waitForSelector("app-secondary-button");
+  let innerText = await appSecondaryButton?.getProperty("innerText");
+  const text = await innerText?.jsonValue();
+  return text == "RETURN TO MAP" ? null : appSecondaryButton;
+}
 scrap()
   .then(() => {
     console.log("Script completed successfully");

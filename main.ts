@@ -1,20 +1,28 @@
 import fs from "fs";
 import db from "./db";
 import { eq } from "drizzle-orm";
-import { resortsTable } from "./db/schema";
 import { findDifferenceIndices, getAllResorts } from "./helpers/util";
+import { availabilityTable } from "./db/schema";
+import { resorts_array } from "./helpers/contants";
 async function main() {
-  const resorts = await getAllResorts();
-  console.log(resorts.resorts.length);
-  for (const resort of resorts.resorts) {
+  const resorts_scrap_response = await getAllResorts();
+  console.log(resorts_scrap_response.resorts.length);
+  for (const resort_scrap_response of resorts_scrap_response.resorts) {
     //get resorts availability string
-    const name = resort.accommodationtypeno;
-    const sub_unitcode = resort.sub_unitcode.trim();
-
-    const AvailabilityResponse = resort.Availability;
+    const camp_name = resort_scrap_response.camp_name;
+    const park_name = resort_scrap_response.park_name;
+    const camp_id = resorts_array
+      .find((camp) => camp.name === park_name)
+      ?.camp.find((camp) => camp.name === camp_name)?.id;
+    if (!camp_id) {
+      console.log("camp not found");
+      throw Error("camp not found");
+    }
+    const resort_scrap_response_avaliability_array =
+      resort_scrap_response.Availability;
     let newAvailabilityString: string = "";
 
-    for (const availability of AvailabilityResponse) {
+    for (const availability of resort_scrap_response_avaliability_array) {
       const count = availability.split("_")[1];
 
       newAvailabilityString +=
@@ -24,22 +32,22 @@ async function main() {
     //check if exists, update or insert
     const res = await db
       .select()
-      .from(resortsTable)
-      .where(eq(resortsTable.sub_unitcode, sub_unitcode));
+      .from(availabilityTable)
+      .where(eq(availabilityTable.camp_id, camp_id));
     if (res.length === 0) {
       //insert
       await db
-        .insert(resortsTable)
-        .values({ name, sub_unitcode, avaliabilty: newAvailabilityString });
+        .insert(availabilityTable)
+        .values({ camp_id, availability: newAvailabilityString });
     } else {
       //update
       await db
-        .update(resortsTable)
-        .set({ avaliabilty: newAvailabilityString })
-        .where(eq(resortsTable.sub_unitcode, sub_unitcode));
+        .update(availabilityTable)
+        .set({ availability: newAvailabilityString })
+        .where(eq(availabilityTable.camp_id, camp_id));
 
       //check for changes
-      const oldAvailability = res[0].avaliabilty;
+      const oldAvailability = res[0].availability;
       const oldArr = oldAvailability.split(",").map(Number);
       const newArr = newAvailabilityString.split(",").map(Number);
 
