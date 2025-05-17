@@ -11,12 +11,12 @@ export function findDifferenceIndices(
 }
 
 export function getAllResorts() {
-  if (true) {
-    const data = fs.readFileSync("resp.txt", "utf8");
-    const json = JSON.parse(data);
+  // if (true) {
+  //   const data = fs.readFileSync("resp.txt", "utf8");
+  //   const json = JSON.parse(data);
 
-    const resorts = json.DATA.resort;
-    return resorts;
-  }
+  //   const resorts = json.DATA.resort;
+  //   return resorts;
+  // }
   return scrap();
 }
