@@ -2,7 +2,7 @@ import fs from "fs";
 import db from "./db";
 import { eq } from "drizzle-orm";
 import { resortsTable } from "./db/schema";
-import { findDifferenceIndices, getAllResorts } from "./util";
+import { findDifferenceIndices, getAllResorts } from "./helpers/util";
 async function main() {
   const resorts = await getAllResorts();
   console.log(resorts.resorts.length);

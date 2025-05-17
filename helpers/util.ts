@@ -1,5 +1,5 @@
 import fs from "fs";
-import { scrap } from "./scrap";
+import { scrap } from "../scrap";
 
 export function findDifferenceIndices(
   oldAvailability: number[],
