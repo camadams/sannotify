@@ -2,9 +2,32 @@ import puppeteer from "puppeteer";
 import fs from "fs";
 
 export async function scrap() {
-  const browser = await puppeteer.launch({ headless: false });
+  console.log("Starting browser...");
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-first-run",
+      "--no-zygote",
+      "--disable-gpu",
+    ],
+    timeout: 60000,
+  });
+
+  console.log("Creating new page...");
   const page = await browser.newPage();
+
+  page.setDefaultTimeout(60000);
+
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+  );
+
   let ans = { resorts: [] } as { resorts: Record<string, string>[] };
+
   page.on("response", async (response) => {
     if (
       response.request().method() === "POST" &&
@@ -14,6 +37,7 @@ export async function scrap() {
       try {
         json = await response.json();
         let newResorts = json.DATA.resort as Record<string, string>[];
+        console.log(`Found ${newResorts.length} resorts in response`);
         ans.resorts.push(...newResorts);
       } catch (error) {
         console.error("Error reading response:", error);
@@ -21,44 +45,78 @@ export async function scrap() {
     }
   });
 
+  page.on("pageerror", (error) => console.log("PAGE ERROR:", error.message));
   const url =
     "https://www.sanparks.org/reservations/accommodation/filters/parks/6%7C7%7C9/arrivalDate/2025-10-01/departureDate/2025-10-02/camps/0%7C74%7C257%7C76%7C264%7C130%7C223%7C224%7C225%7C268/types/0%7C1%7C2%7C4%7C5%7C6%7C7%7C8%7C9%7C12/features/0";
-  // const url =
-  //   "https://www.sanparks.org/reservations/accommodation/filters/parks/17%7C6%7C7%7C8%7C9%7C94%7C113%7C10%7C11%7C12%7C26%7C22%7C14%7C21%7C15%7C16%7C19%7C20%7C23/arrivalDate/2025-10-01/departureDate/2025-10-02/camps/0%7C83%7C97%7C86%7C87%7C88%7C95%7C101%7C74%7C257%7C76%7C264%7C130%7C223%7C224%7C225%7C2779%7C268%7C273%7C134%7C116%7C115%7C117%7C63%7C92%7C256%7C269%7C57%7C89%7C58%7C59%7C90%7C55%7C56%7C54%7C91%7C239%7C51%7C31%7C32%7C52%7C81%7C123%7C34%7C35%7C48%7C49%7C36%7C37%7C38%7C228%7C39%7C40%7C216%7C53%7C41%7C42%7C43%7C44%7C45%7C46%7C50%7C102%7C71%7C72%7C107%7C69%7C112%7C62%7C60%7C110%7C129%7C111%7C141%7C274%7C265%7C109%7C108%7C245%7C226%7C227%7C271/types/0%7C4%7C5%7C6%7C7%7C9%7C10%7C12/features/0";
-  await page.goto(url, {
-    waitUntil: "domcontentloaded",
-  });
-  await page.waitForResponse((response) =>
-    response.url().includes("getAvailabilityMatch.php")
-  );
-  const list = await page.$('a[data-type="list"]');
 
-  await list?.click();
-
-  let appSecondaryButton = await page.waitForSelector("app-secondary-button");
-  let count = 0;
-  while (appSecondaryButton) {
-    await appSecondaryButton.click();
-    await page.waitForResponse((response) =>
-      response.url().includes("getAvailabilityMatch.php")
-    );
-    appSecondaryButton = await page.waitForSelector("app-secondary-button", {
-      timeout: 60000,
+  try {
+    await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 90000,
     });
-    if (appSecondaryButton) {
-      let innerText = await appSecondaryButton.getProperty("innerText");
-      const text = await innerText.jsonValue();
-      if (text === "RETURN TO MAP") {
-        console.log("breaking");
-        break;
-      }
-    }
-    console.log(count);
-    count++;
-  }
 
-  await browser.close();
+    try {
+      await page.waitForResponse(
+        (response) => response.url().includes("getAvailabilityMatch.php"),
+        { timeout: 60000 }
+      );
+      let appSecondaryButton = await page.waitForSelector(
+        "app-secondary-button",
+        {
+          timeout: 60000,
+          visible: true,
+        }
+      );
+
+      let count = 0;
+      while (appSecondaryButton) {
+        await appSecondaryButton.click();
+
+        await page.waitForResponse(
+          (response) => response.url().includes("getAvailabilityMatch.php"),
+          { timeout: 60000 }
+        );
+
+        try {
+          appSecondaryButton = await page.waitForSelector(
+            "app-secondary-button",
+            {
+              timeout: 60000,
+              visible: true,
+            }
+          );
+
+          if (appSecondaryButton) {
+            let innerText = await appSecondaryButton.getProperty("innerText");
+            const text = await innerText.jsonValue();
+            if (text === "RETURN TO MAP") {
+              break;
+            }
+          }
+        } catch (error) {
+          console.log("Error or timeout waiting for button:", error.message);
+          break;
+        }
+
+        count++;
+      }
+    } catch (error) {
+      console.error("Error during page interaction:", error.message);
+    }
+  } catch (error) {
+    console.error("Error loading page:", error.message);
+  } finally {
+    console.log(`Found total of ${ans.resorts.length} resorts`);
+    console.log("Closing browser...");
+    await browser.close();
+  }
   return ans;
 }
 
-// scrap();
+scrap()
+  .then(() => {
+    console.log("Script completed successfully");
+  })
+  .catch((error) => {
+    console.error("Script failed with error:", error);
+  });
