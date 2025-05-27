@@ -14,7 +14,8 @@ export default function Home() {
             </p>
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-            Get alerts for <span className="text-primary">cabin</span> and{" "}
+            Get <span className="underline">alerts</span> for{" "}
+            <span className="text-primary">accommodation</span> and{" "}
             <span className="text-primary">trail openings</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground">
