@@ -96,7 +96,7 @@ export default function Home() {
             Ready to Catch Every Chance?
           </h2>
           <p className="text-lg opacity-90">
-            Join hundreds of park lovers who use SanNotify to get the spots they
+            Be among the first to join our waitlist and get the park spots you
             want.
           </p>
           <div className="flex mx-auto justify-center">
