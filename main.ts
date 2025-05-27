@@ -1,19 +1,22 @@
-import fs from "fs";
 import db from "./db";
 import { eq } from "drizzle-orm";
 import { findDifferenceIndices, getAllResorts } from "./helpers/util";
 import { availabilityTable } from "./db/schema";
 import { resorts_array } from "./helpers/contants";
 async function main() {
+  console.log({ hi: 1 });
+
   const resorts_scrap_response = await getAllResorts();
   console.log(resorts_scrap_response.resorts.length);
   for (const resort_scrap_response of resorts_scrap_response.resorts) {
     //get resorts availability string
     const camp_name = resort_scrap_response.camp_name;
     const park_name = resort_scrap_response.park_name;
+    console.log({ camp_name, park_name });
     const camp_id = resorts_array
       .find((camp) => camp.name === park_name)
       ?.camp.find((camp) => camp.name === camp_name)?.id;
+    console.log({ camp_id });
     if (!camp_id) {
       console.log("camp not found");
       throw Error("camp not found");

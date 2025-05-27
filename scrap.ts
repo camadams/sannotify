@@ -37,6 +37,8 @@ export async function scrap() {
       try {
         json = await response.json();
         let newResorts = json.DATA.resort as Record<string, string>[];
+        let a = newResorts[0].a;
+
         console.log(`Found ${newResorts.length} resorts in response`);
         ans.resorts.push(...newResorts);
       } catch (error) {
@@ -79,6 +81,7 @@ export async function scrap() {
     console.log("Closing browser...");
     await browser.close();
   }
+  fs.writeFileSync("res.json", JSON.stringify(ans, null, 2));
   return ans;
 }
 async function getLoadMoreButton(page: Page) {
